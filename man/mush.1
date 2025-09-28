@@ -1,22 +1,26 @@
-MUSH(1)                       User Commands                       MUSH(1)
+       MUSH(1)                       User Commands                       MUSH(1)
 
 NAME
-       mush - ferramenta TUI minimal para buscar e tocar áudio via yt-dlp e mpv
+       mush - terminal music player via yt-dlp e mpv com histórico e playlists
 
 SYNOPSIS
        mush [options]
 
 DESCRIPTION
-       mush é um utilitário em Shell (bash) que permite pesquisar no YouTube usando
-       yt-dlp e tocar os resultados diretamente com mpv (streaming — sem salvar).
-       O prompt imita um estilo “metasploit-like”:
+       mush é um utilitário em Bash que permite pesquisar e tocar músicas do YouTube
+       diretamente no terminal usando yt-dlp e mpv, mantendo histórico persistente
+       e playlists dinâmicas.
+
+       O prompt segue o estilo:
            [ musica_atual - mush ]>
 
-       A ferramenta realiza as seguintes ações:
-       • Pesquisa via yt-dlp "ytsearchN:<query>" (configurável)
+       Funcionalidades principais:
+       • Pesquisa via yt-dlp "ytsearchN:<query>" (RESULTS configurável)
        • Lista resultados (título / uploader / duração)
        • Permite escolher um resultado para tocar ou tocar todos em sequência
-       • Controla o processo mpv (mata o player anterior ao tocar o próximo)
+       • Mantém uma fila interna de músicas (queue) para tocar em sequência
+       • Controla o processo mpv (mata ou pausa/resume músicas)
+       • Permite navegar na fila com next/prev
 
 OPTIONS
        -h, --help
@@ -26,16 +30,8 @@ OPTIONS
               Variável de ambiente. Se presente, mostra saída verbosa do yt-dlp para debug.
 
        RESULTS=n
-              Variável de ambiente que define quantos resultados a pesquisa retorna (default: 6).
-
-       MPV_OPTS
-              Você pode sobrescrever opções do mpv exportando uma variável ou editando o script.
-
-REQUIREMENTS
-       yt-dlp (recomendado: versão atual)
-       mpv
-       bash
-       Utilitários padrão do sistema (read, kill, wait, etc.)
+              Quantidade de resultados retornados por busca (default: 6). Pode ser
+              alterada durante a execução com :setresults.
 
 COMMANDS (no prompt)
        :q, exit
@@ -44,35 +40,122 @@ COMMANDS (no prompt)
        :s, :stop
               Para a reprodução atual (mata o mpv atual).
 
+       :pause
+              Pausa a música atual.
+MUSH(1)                       User Commands                       MUSH(1)
+
+NAME
+       mush - terminal music player via yt-dlp e mpv com histórico e playlists
+
+SYNOPSIS
+       mush [options]
+
+DESCRIPTION
+       mush é um utilitário em Bash que permite pesquisar e tocar músicas do YouTube
+       diretamente no terminal usando yt-dlp e mpv, mantendo histórico persistente
+       e playlists dinâmicas.
+
+       O prompt segue o estilo:
+           [ musica_atual - mush ]>
+
+       Funcionalidades principais:
+       • Pesquisa via yt-dlp "ytsearchN:<query>" (RESULTS configurável)
+       • Lista resultados e permite tocar um ou todos em sequência
+       • Fila interna (queue) para navegação com next / prev
+       • Histórico persistente em ~/.mush/history
+       • Playlists dinâmicas em ~/.mush/playlists/*.txt
+       • Controle de reprodução: pause / resume / stop
+       • Comandos no prompt para criar, listar e tocar playlists
+
+ENVIRONMENT
+       DEBUG=1
+              Ativa modo verboso com saída detalhada de yt-dlp (debug).
+
+       RESULTS=n
+              Número de resultados retornados por busca (default: 6). Pode ser alterado
+              durante execução com :setresults.
+
+COMMANDS (no prompt)
+       :q, exit
+              Sai do programa.
+
+       :s, :stop
+              Para a música atual (mata o mpv).
+
+       :pause
+              Pausa a música atual.
+
+       :resume
+              Retoma a música pausada.
+
+       :next
+              Toca a próxima música na fila (queue).
+
+       :prev
+              Toca a música anterior na fila.
+
+       :list
+              Mostra todas as músicas da fila, indicando a atual.
+
+       :setresults
+              Permite alterar a quantidade de resultados buscados pelo yt-dlp.
+
+       :history
+              Mostra o histórico de músicas tocadas (arquivo ~/.mush/history).
+
+       !<n>
+              Toca a música de índice <n> do histórico.
+
+       :playlists
+              Lista todas as playlists criadas (~/.mush/playlists/).
+
+       :create <name>
+              Cria uma nova playlist chamada <name>.
+
+       :add <playlist>
+              Adiciona a música atual ou selecionada à playlist <playlist>.
+
+       :play <playlist>
+              Toca todas as músicas da playlist <playlist> em sequência.
+
+       :cls, :clear
+              Limpa a tela.
+
        :h, :help
-              Mostra a ajuda dentro do loop.
+              Mostra todos os comandos disponíveis e ajuda.
 
-       <query>
-              Digite qualquer texto para pesquisar no YouTube (ex.: "lofi hip hop").
-
-       a
-              Após listar resultados, digite 'a' para tocar todos em sequência.
-
-       c
-              Cancelar seleção e voltar ao prompt.
+SEARCH QUERIES
+       Qualquer texto digitado no prompt que não seja comando iniciará uma busca
+       no YouTube. Exemplo:
+           [ nenhuma - mush ]> lofi hip hop
 
 EXAMPLES
-       Pesquisa e toca o primeiro resultado:
-           mush
+       Pesquisar e tocar a primeira música:
            [ nenhuma - mush ]> lofi hip hop
            # Escolha 1
 
-       Rodar em modo debug:
-           DEBUG=1 RESULTS=10 ./mush
+       Criar e tocar playlist:
+           [ tocando ] - mush > :create relax
+           [ tocando ] - mush > :add relax
+           [ tocando ] - mush > :play relax
 
-       Usar mais resultados:
-           RESULTS=12 ./mush
+       Trabalhar com histórico:
+           [ tocando ] - mush > :history
+           [ tocando ] - mush > !3
 
 BUGS
-       Reporte bugs com a saída do modo debug (DEBUG=1) mostrando o comando que falhou.
+       Reporte bugs com saída do modo DEBUG=1 mostrando falhas em yt-dlp ou mpv.
+
+BEHAVIOR AND PERFORMANCE
+       • URLs pré-carregadas: yt-dlp busca os URLs antes da reprodução para tocar
+         quase instantaneamente.
+       • Fila (queue) permite navegação rápida entre músicas ou playlists.
+       • Histórico persistente armazena data, título e URL de cada música.
+       • Playlists são arquivos simples de texto, facilmente editáveis.
 
 AUTHOR
-       Feito por Hazer — adaptado e documentado para uso pessoal.
+       Hazer — script pessoal, adaptável para terminal Linux/Bash.
 
 COPYRIGHT
        © 2025 — fornecido theHzr. Use por sua conta e risco.
+
