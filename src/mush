@@ -3,100 +3,67 @@
 # Dependencies: yt-dlp, mpv, bash
 # DEBUG=1 for verbose info
 
-
 RESULTS=6
 PROMPT_NAME="mush"
 current_song="nenhuma"
 mpv_pid=""
 DEBUG=${DEBUG:-0}
 
-queue=()           # lista de URLs
-queue_titles=()    # lista de títulos correspondentes
-current_index=-1   # posição atual na fila
+queue=()           
+queue_titles=()   
+current_index=-1  
 
-cleanup() {
-  [[ -n "$mpv_pid" ]] && kill "$mpv_pid" 2>/dev/null || true
-}
-trap cleanup EXIT
-
-log() { [[ "$DEBUG" -eq 1 ]] && printf "[debug] %s\n" "$*"; }
-err() { printf "\e[31m[error]\e[0m %s\n" "$*" >&2; }
-
-play_url() {
-  local url="$1"
-  [[ -n "$mpv_pid" ]] && kill "$mpv_pid" 2>/dev/null || true
-  mpv --no-video --really-quiet "$url" >/dev/null 2>&1 &
-  mpv_pid=$!
-  log "mpv pid=$mpv_pid"
-}
-
-pause_song() { [[ -n "$mpv_pid" ]] && kill -STOP "$mpv_pid"; echo "paused."; }
-resume_song() { [[ -n "$mpv_pid" ]] && kill -CONT "$mpv_pid"; echo "resumed."; }
-stop_song() { [[ -n "$mpv_pid" ]] && kill "$mpv_pid" 2>/dev/null && wait "$mpv_pid" 2>/dev/null; mpv_pid=""; current_song="nenhuma"; }
-next_song() {
-  if (( current_index + 1 < ${#queue[@]} )); then
-    ((current_index++))
-    current_song="${queue_titles[$current_index]}"
-    echo "[ tocando ] $current_song"
-    play_url "${queue[$current_index]}"
-  else
-    echo "Fim da fila."
-  fi
-}
-prev_song() {
-  if (( current_index - 1 >= 0 )); then
-    ((current_index--))
-    current_song="${queue_titles[$current_index]}"
-    echo "[ tocando ] $current_song"
-    play_url "${queue[$current_index]}"
-  else
-    echo "Início da fila."
-  fi
-}
+RED="\e[31m"
+GREEN="\e[32m"
+YELLOW="\e[33m"
+BLUE="\e[34m"
+MAGENTA="\e[35m"
+CYAN="\e[36m"
+BOLD="\e[1m"
+RESET="\e[0m"
 
 spinner_vinyl() {
   local frames=(
+"            
+   ████████   
+  █        █  
+ █   •      █ 
+ █          █ 
+  █        █  
+   ████████   
+            
 "
-   ████████
-  █        █
- █   •      █
- █          █
-  █        █
-   ████████
-
+"            
+   ████████   
+  █        █  
+ █      •   █ 
+ █          █ 
+  █        █  
+   ████████   
+            
 "
+"            
+   ████████   
+  █        █  
+ █        • █ 
+ █          █ 
+  █        █  
+   ████████   
+            
 "
-   ████████
-  █        █
- █      •   █
- █          █
-  █        █
-   ████████
-
-"
-"
-   ████████
-  █        █
- █        • █
- █          █
-  █        █
-   ████████
-
-"
-"
-   ████████
-  █        █
- █   •       █
- █          █
-  █        █
-   ████████
-
+"            
+   ████████   
+  █        █  
+ █   •      █ 
+ █          █ 
+  █        █  
+   ████████   
+            
 "
   )
   local delay=0.15
   local clear="\033[H\033[J"
 
-  # loop infinito até ser morto
   while true; do
     for f in "${frames[@]}"; do
       printf "${clear}"            # limpa tela
@@ -107,27 +74,63 @@ spinner_vinyl() {
   done
 }
 
-search_print() { 
-  spinner_vinyl &
-  spid=$!
 
+cleanup() {
+  [[ -n "$mpv_pid" ]] && kill "$mpv_pid" 2>/dev/null || true
+}
+trap cleanup EXIT
+
+log() { [[ "$DEBUG" -eq 1 ]] && printf "${CYAN}[debug]${RESET} %s\n" "$*"; }
+err() { printf "${RED}[error]${RESET} %s\n" "$*" >&2; }
+
+play_url() {
+  local url="$1"
+  [[ -n "$mpv_pid" ]] && kill "$mpv_pid" 2>/dev/null || true
+  mpv --no-video --really-quiet "$url" >/dev/null 2>&1 &
+  mpv_pid=$!
+  log "mpv pid=$mpv_pid"
+}
+
+pause_song() { [[ -n "$mpv_pid" ]] && kill -STOP "$mpv_pid"; echo -e "${YELLOW}paused.${RESET}"; }
+resume_song() { [[ -n "$mpv_pid" ]] && kill -CONT "$mpv_pid"; echo -e "${GREEN}resumed.${RESET}"; }
+stop_song() { [[ -n "$mpv_pid" ]] && kill "$mpv_pid" 2>/dev/null && wait "$mpv_pid" 2>/dev/null; mpv_pid=""; current_song="nenhuma"; }
+
+next_song() {
+  if (( current_index + 1 < ${#queue[@]} )); then
+    ((current_index++))
+    current_song="${queue_titles[$current_index]}"
+    echo -e "${GREEN}[▶ TOCANDO]${RESET} ${BOLD}$current_song${RESET}"
+    play_url "${queue[$current_index]}"
+  else
+    echo -e "${YELLOW}Fim da fila.${RESET}"
+  fi
+}
+
+prev_song() {
+  if (( current_index - 1 >= 0 )); then
+    ((current_index--))
+    current_song="${queue_titles[$current_index]}"
+    echo -e "${GREEN}[▶ TOCANDO]${RESET} ${BOLD}$current_song${RESET}"
+    play_url "${queue[$current_index]}"
+  else
+    echo -e "${YELLOW}Início da fila.${RESET}"
+  fi
+}
+
+search_print() {
   local query="$*"
   local cmd=(yt-dlp --no-warnings --print "%(id)s|%(title)s|%(uploader)s|%(duration)s" "ytsearch${RESULTS}:${query}")
-  kill $spid 2>/dev/null
-  wait $spid 2>/dev/null
-
   log "Exec: ${cmd[*]}"
   if [[ "$DEBUG" -eq 1 ]]; then
     "${cmd[@]}"
   else
-    "${cmd[@]}" 2>/dev/null
+    "${cmd[@]}" 2>/dev/null   
   fi
 }
 
 show_results_and_choose() {
   local query="$*"
   mapfile -t lines < <(search_print "$query")
-  # strip empty lines
   local tmp=()
   for l in "${lines[@]}"; do [[ -n "${l// /}" ]] && tmp+=("$l"); done
   lines=("${tmp[@]}")
@@ -137,14 +140,13 @@ show_results_and_choose() {
     return 1
   fi
 
-  echo
-  echo "resultados para: $query"
+  echo -e "${BOLD}Resultados para:${RESET} $query"
   for i in "${!lines[@]}"; do
     IFS='|' read -r id title uploader duration <<<"${lines[$i]}"
-    printf "  %2s) %.80s — %s [%s]\n" "$((i+1))" "$title" "$uploader" "$duration"
+    printf "  ${YELLOW}%2s)${RESET} %.80s — %s [%s]\n" "$((i+1))" "$title" "$uploader" "$duration"
   done
   echo
-  printf "escolha numero (1-%s), 'a' tocar todos, 'c' cancelar: " "${#lines[@]}"
+  printf "${CYAN}Escolha numero (1-%s), 'a' tocar todos, 'c' cancelar: ${RESET}" "${#lines[@]}"
   read -r choice
 
   if [[ "$choice" == "c" ]]; then return 1; fi
@@ -159,7 +161,7 @@ show_results_and_choose() {
     done
     current_index=0
     current_song="${queue_titles[$current_index]}"
-    echo "[ tocando ] $current_song"
+    echo -e "${GREEN}[▶ TOCANDO]${RESET} ${BOLD}$current_song${RESET}"
     play_url "${queue[$current_index]}"
     return 0
   fi
@@ -173,7 +175,7 @@ show_results_and_choose() {
     queue_titles+=("$title")
     current_index=${#queue[@]}-1
     current_song="$title"
-    echo "[ tocando ] $current_song"
+    echo -e "${GREEN}[▶ TOCANDO]${RESET} ${BOLD}$current_song${RESET}"
     play_url "$url"
     return 0
   fi
@@ -184,14 +186,14 @@ show_results_and_choose() {
 
 list_queue() {
   if (( ${#queue_titles[@]} == 0 )); then
-    echo "Fila vazia."
+    echo -e "${YELLOW}Fila vazia.${RESET}"
     return
   fi
 
-  echo "Fila de musicas:"
+  echo -e "${BOLD}Fila de músicas:${RESET}"
   for i in "${!queue_titles[@]}"; do
     if (( i == current_index )); then
-      printf "  -> %2s) %s\n" "$((i+1))" "${queue_titles[$i]}"
+      printf "  ${GREEN}-> %2s)${RESET} ${YELLOW}%s${RESET}\n" "$((i+1))" "${queue_titles[$i]}"
     else
       printf "     %2s) %s\n" "$((i+1))" "${queue_titles[$i]}"
     fi
@@ -202,9 +204,9 @@ set_results() {
   local n="$1"
   if [[ "$n" =~ ^[0-9]+$ ]] && (( n > 0 && n <= 50 )); then
     RESULTS="$n"
-    echo "resultados por busca definido para: $RESULTS"
+    echo -e "${GREEN}Resultados por busca definido para: $RESULTS${RESET}"
   else
-    echo "informe um numero entre 1 e 50"
+    echo -e "${RED}Informe um numero entre 1 e 50${RESET}"
   fi
 }
 
@@ -223,10 +225,10 @@ add_to_history() {
 
 show_history() {
     if [[ ! -s "$HISTORY_FILE" ]]; then
-        echo "Histórico vazio."
+        echo -e "${YELLOW}Histórico vazio.${RESET}"
         return
     fi
-    nl -w2 -s') ' "$HISTORY_FILE" | awk -F'|' '{print $1") "$2" "["$3"]"}'
+    nl -w2 -s') ' "$HISTORY_FILE" | awk -F'|' '{print $1") "$2" ["$3"]"}'
 }
 
 play_from_history() {
@@ -239,16 +241,16 @@ play_from_history() {
     queue_titles+=("$title")
     current_index=${#queue[@]}-1
     current_song="$title"
-    echo "[ tocando ] $current_song"
+    echo -e "${GREEN}[▶ TOCANDO]${RESET} ${BOLD}$current_song${RESET}"
     play_url "$url"
 }
 
 create_playlist() {
     local name="$1"
     local file="$PLAYLISTS_DIR/$name.txt"
-    [[ -e "$file" ]] && echo "Playlist já existe."
+    [[ -e "$file" ]] && { echo -e "${YELLOW}Playlist já existe.${RESET}"; return; }
     touch "$file"
-    echo "Playlist '$name' criada em $file"
+    echo -e "${MAGENTA}Playlist '$name' criada em $file${RESET}"
 }
 
 add_to_playlist() {
@@ -256,9 +258,9 @@ add_to_playlist() {
     local title="$2"
     local url="$3"
     local file="$PLAYLISTS_DIR/$name.txt"
-    [[ ! -e "$file" ]] && { echo "Playlist não existe."; return; }
+    [[ ! -e "$file" ]] && { echo -e "${RED}Playlist não existe.${RESET}"; return; }
     echo "$title|$url" >> "$file"
-    echo "Música adicionada à '$name'"
+    echo -e "${GREEN}Música adicionada à '$name'${RESET}"
 }
 
 show_playlists() {
@@ -268,14 +270,14 @@ show_playlists() {
 play_playlist() {
     local name="$1"
     local file="$PLAYLISTS_DIR/$name.txt"
-    [[ ! -e "$file" ]] && { echo "Playlist não encontrada."; return; }
+    [[ ! -e "$file" ]] && { echo -e "${RED}Playlist não encontrada.${RESET}"; return; }
     while IFS='|' read -r title url; do
         queue+=("$url")
         queue_titles+=("$title")
     done < "$file"
     current_index=0
     current_song="${queue_titles[$current_index]}"
-    echo "[ tocando ] $current_song"
+    echo -e "${GREEN}[▶ TOCANDO]${RESET} ${BOLD}$current_song${RESET}"
     play_url "${queue[$current_index]}"
 }
 
@@ -283,14 +285,14 @@ save_like() {
    [[ -z "$current_song" || -z "${queue[$current_index]}" ]] && return
     mkdir -p "$HISTORY_DIR/liked"
     echo "$current_song|${queue[$current_index]}" >> "$HISTORY_DIR/liked/liked.txt"
-    echo "Música salva em liked."
+    echo -e "${GREEN}Música salva em liked.${RESET}"
 }
 
 save_dislike() {
     [[ -z "$current_song" || -z "${queue[$current_index]}" ]] && return
     mkdir -p "$HISTORY_DIR/dislikes"
     echo "$current_song|${queue[$current_index]}" >> "$HISTORY_DIR/dislikes/disliked.txt"
-    echo "Música marcada como dislike."
+    echo -e "${RED}Música marcada como dislike.${RESET}"
 }
 
 fy_play() {
@@ -326,7 +328,7 @@ append_history() {
 
 while true; do
 
-    printf "[ %s - %s ]> " "$current_song" "$PROMPT_NAME"
+    printf "${BLUE}[${BOLD}%s${RESET}${BLUE} - ${BOLD}%s${RESET}${BLUE}]> ${RESET}" "$current_song" "$PROMPT_NAME"
   if ! IFS= read -r query; then echo; break; fi
   query="${query## }"; query="${query%% }"; [[ -z "$query" ]] && continue
 
@@ -334,29 +336,29 @@ case "$query" in
     :q|exit)
         break
         ;;
-        :sfy|:stopfy)
-    fy_mode=0
-    [[ -n "$mpv_pid" ]] && kill "$mpv_pid" 2>/dev/null
-    mpv_pid=""
-    current_song="nenhuma"
-    echo "FY Mode parado."
-    ;;
+    :sfy|:stopfy)
+        fy_mode=0
+        [[ -n "$mpv_pid" ]] && kill "$mpv_pid" 2>/dev/null
+        mpv_pid=""
+        current_song="nenhuma"
+        echo -e "${YELLOW}FY Mode parado.${RESET}"
+        ;;
     :s|:stop)
         if [[ -n "$mpv_pid" ]] && kill -0 "$mpv_pid" 2>/dev/null; then
             kill "$mpv_pid" 2>/dev/null || true
             wait "$mpv_pid" 2>/dev/null || true
             mpv_pid=""
             current_song="nenhuma"
-            echo "stopped."
+            echo -e "${YELLOW}Stopped.${RESET}"
         else
-            echo "Nada tocando."
+            echo -e "${YELLOW}Nada tocando.${RESET}"
         fi
         ;;
     :pause)
-        [[ -n "$mpv_pid" ]] && kill -STOP "$mpv_pid" 2>/dev/null && echo "pausado."
+        [[ -n "$mpv_pid" ]] && kill -STOP "$mpv_pid" 2>/dev/null && echo -e "${YELLOW}Pausado.${RESET}"
         ;;
     :resume)
-        [[ -n "$mpv_pid" ]] && kill -CONT "$mpv_pid" 2>/dev/null && echo "resumido."
+        [[ -n "$mpv_pid" ]] && kill -CONT "$mpv_pid" 2>/dev/null && echo -e "${GREEN}Resumido.${RESET}"
         ;;
     :next)
         next_song
@@ -367,11 +369,10 @@ case "$query" in
     :list|:ls)
         list_queue
         ;;
-        :fy) fy_play ;;
-        :like) fy_mode=1; fy_like ;;
-        :dislike) fy_mode=1; fy_dislike ;;
-        :save) fy_mode=1; fy_like ;;
-
+    :fy) fy_play ;;
+    :like) fy_mode=1; fy_like ;;
+    :dislike) fy_mode=1; fy_dislike ;;
+    :save) fy_mode=1; fy_like ;;
     :setresults)
         read -p "Quantidade de resultados (1-50): " n
         set_results "$n"
@@ -398,13 +399,13 @@ case "$query" in
         clear -x
         ;;
     :h|:help)
-        echo "Comandos:"
+        echo -e "${BOLD}Comandos:${RESET}"
         echo ":q, exit           - sair"
         echo ":s, :stop          - parar música atual"
         echo ":fy                - inicia o modo de fy"
         echo ":like              - like no modo fy"
         echo ":dislike           - dislike no modo fy"
-        echo ":save              - salve a musica para o modo fy"
+        echo ":save              - salve a música para o modo fy"
         echo ":pause             - pausar música"
         echo ":resume            - retomar música"
         echo ":next              - próxima música na fila"
@@ -427,7 +428,8 @@ case "$query" in
     *)
         show_results_and_choose "$query"
         ;;
-    esac
+esac
 done
 stop_song
-echo "bye."
+echo -e "${CYAN}bye.${RESET}"
+
