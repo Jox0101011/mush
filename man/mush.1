@@ -1,161 +1,158 @@
-       MUSH(1)                       User Commands                       MUSH(1)
+.TH MUSH 1 "Setembro 2025" "Versão 1.0" "Manual do Usuário"
 
-NAME
-       mush - terminal music player via yt-dlp e mpv com histórico e playlists
+.SH NOME
+mush \- Music In Shell — player e gerenciador de músicas para o terminal
 
-SYNOPSIS
-       mush [options]
+.SH SINOPSE
+.B mush.sh
+[\fIOPÇÕES\fR]
 
-DESCRIPTION
-       mush é um utilitário em Bash que permite pesquisar e tocar músicas do YouTube
-       diretamente no terminal usando yt-dlp e mpv, mantendo histórico persistente
-       e playlists dinâmicas.
+.SH DESCRIÇÃO
+O \fBmush\fR é uma ferramenta interativa em shell script que busca, organiza e reproduz músicas diretamente do YouTube usando \fByt-dlp\fR e \fBmpv\fR.  
+Ele implementa fila, histórico, playlists e modo de recomendações automáticas (FY mode).
 
-       O prompt segue o estilo:
-           [ musica_atual - mush ]>
+.SH DEPENDÊNCIAS
+yt-dlp, mpv, bash (>= 5.0)
 
-       Funcionalidades principais:
-       • Pesquisa via yt-dlp "ytsearchN:<query>" (RESULTS configurável)
-       • Lista resultados (título / uploader / duração)
-       • Permite escolher um resultado para tocar ou tocar todos em sequência
-       • Mantém uma fila interna de músicas (queue) para tocar em sequência
-       • Controla o processo mpv (mata ou pausa/resume músicas)
-       • Permite navegar na fila com next/prev
+.SH FUNCIONAMENTO
+Ao executar \fBmush\fR sem argumentos, abre-se um prompt interativo.  
+Você pode digitar o nome de uma música ou usar os comandos internos abaixo.  
+A música é buscada no YouTube, extraída como áudio e tocada no \fBmpv\fR.
 
-OPTIONS
-       -h, --help
-              Mostra a ajuda básica.
+.SH COMANDOS INTERATIVOS
+.TP
+.B <texto>
+Busca músicas com o termo informado.  
+Mostra lista numerada para escolher qual tocar ou adicionar todas.
 
-       DEBUG=1
-              Variável de ambiente. Se presente, mostra saída verbosa do yt-dlp para debug.
+.TP
+.B !<número>
+Reproduz música do histórico (linha N).
 
-       RESULTS=n
-              Quantidade de resultados retornados por busca (default: 6). Pode ser
-              alterada durante a execução com :setresults.
+.TP
+.B :q, exit
+Sai do mush.
 
-COMMANDS (no prompt)
-       :q, exit
-              Sai do programa.
+.TP
+.B :s, :stop
+Para a música atual.
 
-       :s, :stop
-              Para a reprodução atual (mata o mpv atual).
+.TP
+.B :pause
+Pausa a música atual.
 
-       :pause
-              Pausa a música atual.
-MUSH(1)                       User Commands                       MUSH(1)
+.TP
+.B :resume
+Retoma música pausada.
 
-NAME
-       mush - terminal music player via yt-dlp e mpv com histórico e playlists
+.TP
+.B :next
+Avança para a próxima música na fila.
 
-SYNOPSIS
-       mush [options]
+.TP
+.B :prev
+Volta para a música anterior na fila.
 
-DESCRIPTION
-       mush é um utilitário em Bash que permite pesquisar e tocar músicas do YouTube
-       diretamente no terminal usando yt-dlp e mpv, mantendo histórico persistente
-       e playlists dinâmicas.
+.TP
+.B :list, :ls
+Lista a fila atual de músicas.
 
-       O prompt segue o estilo:
-           [ musica_atual - mush ]>
+.TP
+.B :fy
+Ativa o modo FY (reproduz músicas aleatórias do histórico).
 
-       Funcionalidades principais:
-       • Pesquisa via yt-dlp "ytsearchN:<query>" (RESULTS configurável)
-       • Lista resultados e permite tocar um ou todos em sequência
-       • Fila interna (queue) para navegação com next / prev
-       • Histórico persistente em ~/.mush/history
-       • Playlists dinâmicas em ~/.mush/playlists/*.txt
-       • Controle de reprodução: pause / resume / stop
-       • Comandos no prompt para criar, listar e tocar playlists
+.TP
+.B :like
+Marca a música atual como curtida no FY mode.
 
-ENVIRONMENT
-       DEBUG=1
-              Ativa modo verboso com saída detalhada de yt-dlp (debug).
+.TP
+.B :dislike
+Marca a música atual como “não curtir” no FY mode.
 
-       RESULTS=n
-              Número de resultados retornados por busca (default: 6). Pode ser alterado
-              durante execução com :setresults.
+.TP
+.B :save
+Salva a música atual para uso no FY mode.
 
-COMMANDS (no prompt)
-       :q, exit
-              Sai do programa.
+.TP
+.B :setresults
+Configura quantidade de resultados por busca (1–50).
 
-       :s, :stop
-              Para a música atual (mata o mpv).
+.TP
+.B :history
+Mostra histórico de músicas tocadas.
 
-       :pause
-              Pausa a música atual.
+.TP
+.B :playlists, :pl
+Lista playlists salvas.
 
-       :resume
-              Retoma a música pausada.
+.TP
+.B :create <nome>
+Cria uma nova playlist chamada <nome>.
 
-       :next
-              Toca a próxima música na fila (queue).
+.TP
+.B :add <playlist>
+Adiciona a música atual à playlist.
 
-       :prev
-              Toca a música anterior na fila.
+.TP
+.B :play <playlist>
+Carrega e toca músicas da playlist especificada.
 
-       :list
-              Mostra todas as músicas da fila, indicando a atual.
+.TP
+.B :cls, :clear
+Limpa a tela.
 
-       :setresults
-              Permite alterar a quantidade de resultados buscados pelo yt-dlp.
+.TP
+.B :h, :help
+Exibe a lista de comandos disponíveis.
 
-       :history
-              Mostra o histórico de músicas tocadas (arquivo ~/.mush/history).
+.SH ARQUIVOS
+.TP
+.I ~/.mush/history
+Histórico de músicas tocadas.
 
-       !<n>
-              Toca a música de índice <n> do histórico.
+.TP
+.I ~/.mush/playlists/
+Diretório onde playlists são armazenadas.
 
-       :playlists
-              Lista todas as playlists criadas (~/.mush/playlists/).
+.TP
+.I ~/.mush/liked/liked.txt
+Músicas curtidas no modo FY.
 
-       :create <name>
-              Cria uma nova playlist chamada <name>.
+.TP
+.I ~/.mush/dislikes/disliked.txt
+Músicas não curtidas no modo FY.
 
-       :add <playlist>
-              Adiciona a música atual ou selecionada à playlist <playlist>.
+.SH EXEMPLOS
+.TP
+.B $ mush.sh
+Inicia o prompt interativo.
 
-       :play <playlist>
-              Toca todas as músicas da playlist <playlist> em sequência.
+.TP
+Digite:
+.B nirvana smells like teen spirit
+Mostra lista de resultados, escolha um número.
 
-       :cls, :clear
-              Limpa a tela.
+.TP
+Digite:
+.B !3
+Toca a terceira música do histórico.
 
-       :h, :help
-              Mostra todos os comandos disponíveis e ajuda.
+.TP
+Digite:
+.B :create rock
+Cria uma playlist chamada "rock".
 
-SEARCH QUERIES
-       Qualquer texto digitado no prompt que não seja comando iniciará uma busca
-       no YouTube. Exemplo:
-           [ nenhuma - mush ]> lofi hip hop
+.SH VARIÁVEIS DE AMBIENTE
+.TP
+.B DEBUG=1
+Habilita saída detalhada de depuração.
 
-EXAMPLES
-       Pesquisar e tocar a primeira música:
-           [ nenhuma - mush ]> lofi hip hop
-           # Escolha 1
+.SH AUTOR
+Desenvolvido por Hazer (Music In Shell).
 
-       Criar e tocar playlist:
-           [ tocando ] - mush > :create relax
-           [ tocando ] - mush > :add relax
-           [ tocando ] - mush > :play relax
+.SH LICENÇA
+MIT License (verifique LICENSE do repositório).
 
-       Trabalhar com histórico:
-           [ tocando ] - mush > :history
-           [ tocando ] - mush > !3
-
-BUGS
-       Reporte bugs com saída do modo DEBUG=1 mostrando falhas em yt-dlp ou mpv.
-
-BEHAVIOR AND PERFORMANCE
-       • URLs pré-carregadas: yt-dlp busca os URLs antes da reprodução para tocar
-         quase instantaneamente.
-       • Fila (queue) permite navegação rápida entre músicas ou playlists.
-       • Histórico persistente armazena data, título e URL de cada música.
-       • Playlists são arquivos simples de texto, facilmente editáveis.
-
-AUTHOR
-       Hazer — script pessoal, adaptável para terminal Linux/Bash.
-
-COPYRIGHT
-       © 2025 — fornecido theHzr. Use por sua conta e risco.
+.SH VER TAMBÉM
+yt-dlp(1), mpv(1), bash(1)
 
