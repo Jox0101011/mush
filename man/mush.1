@@ -1,0 +1,78 @@
+MUSH(1)                       User Commands                       MUSH(1)
+
+NAME
+       mush - ferramenta TUI minimal para buscar e tocar áudio via yt-dlp e mpv
+
+SYNOPSIS
+       mush [options]
+
+DESCRIPTION
+       mush é um utilitário em Shell (bash) que permite pesquisar no YouTube usando
+       yt-dlp e tocar os resultados diretamente com mpv (streaming — sem salvar).
+       O prompt imita um estilo “metasploit-like”:
+           [ musica_atual - mush ]>
+
+       A ferramenta realiza as seguintes ações:
+       • Pesquisa via yt-dlp "ytsearchN:<query>" (configurável)
+       • Lista resultados (título / uploader / duração)
+       • Permite escolher um resultado para tocar ou tocar todos em sequência
+       • Controla o processo mpv (mata o player anterior ao tocar o próximo)
+
+OPTIONS
+       -h, --help
+              Mostra a ajuda básica.
+
+       DEBUG=1
+              Variável de ambiente. Se presente, mostra saída verbosa do yt-dlp para debug.
+
+       RESULTS=n
+              Variável de ambiente que define quantos resultados a pesquisa retorna (default: 6).
+
+       MPV_OPTS
+              Você pode sobrescrever opções do mpv exportando uma variável ou editando o script.
+
+REQUIREMENTS
+       yt-dlp (recomendado: versão atual)
+       mpv
+       bash
+       Utilitários padrão do sistema (read, kill, wait, etc.)
+
+COMMANDS (no prompt)
+       :q, exit
+              Sai do programa.
+
+       :s, :stop
+              Para a reprodução atual (mata o mpv atual).
+
+       :h, :help
+              Mostra a ajuda dentro do loop.
+
+       <query>
+              Digite qualquer texto para pesquisar no YouTube (ex.: "lofi hip hop").
+
+       a
+              Após listar resultados, digite 'a' para tocar todos em sequência.
+
+       c
+              Cancelar seleção e voltar ao prompt.
+
+EXAMPLES
+       Pesquisa e toca o primeiro resultado:
+           mush
+           [ nenhuma - mush ]> lofi hip hop
+           # Escolha 1
+
+       Rodar em modo debug:
+           DEBUG=1 RESULTS=10 ./mush
+
+       Usar mais resultados:
+           RESULTS=12 ./mush
+
+BUGS
+       Reporte bugs com a saída do modo debug (DEBUG=1) mostrando o comando que falhou.
+
+AUTHOR
+       Feito por Hazer — adaptado e documentado para uso pessoal.
+
+COPYRIGHT
+       © 2025 — fornecido theHzr. Use por sua conta e risco.
