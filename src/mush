@@ -84,16 +84,40 @@ log() { [[ "$DEBUG" -eq 1 ]] && printf "${CYAN}[debug]${RESET} %s\n" "$*"; }
 err() { printf "${RED}[error]${RESET} %s\n" "$*" >&2; }
 
 play_url() {
-  local url="$1"
-  [[ -n "$mpv_pid" ]] && kill "$mpv_pid" 2>/dev/null || true
-  mpv --no-video --really-quiet "$url" >/dev/null 2>&1 &
-  mpv_pid=$!
-  log "mpv pid=$mpv_pid"
+  local url="$1"
+  [[ -n "$mpv_pid" ]] && kill "$mpv_pid" 2>/dev/null || true
+  
+  setsid mpv --no-video --really-quiet "$url" >/dev/null 2>&1 &
+  mpv_pid=$!
+  log "mpv pid=$mpv_pid"
+  
+  monitor_playback &
 }
 
 pause_song() { [[ -n "$mpv_pid" ]] && kill -STOP "$mpv_pid"; echo -e "${YELLOW}paused.${RESET}"; }
 resume_song() { [[ -n "$mpv_pid" ]] && kill -CONT "$mpv_pid"; echo -e "${GREEN}resumed.${RESET}"; }
 stop_song() { [[ -n "$mpv_pid" ]] && kill "$mpv_pid" 2>/dev/null && wait "$mpv_pid" 2>/dev/null; mpv_pid=""; current_song="nenhuma"; }
+
+monitor_playback() {
+    local mpv_pid_to_wait="$mpv_pid"
+    
+    if wait "$mpv_pid_to_wait" 2>/dev/null; then
+        if [[ "$fy_mode" -eq 1 ]]; then
+            fy_play # Chama a próxima música do FY
+        
+        elif (( current_index + 1 < ${#queue[@]} )); then
+            ((current_index++))
+            current_song="${queue_titles[$current_index]}"
+            echo -e "\n${GREEN}[▶ AUTO]${RESET} ${BOLD}$current_song${RESET}"
+            play_url "${queue[$current_index]}"
+        
+        else
+            echo -e "\n${YELLOW}Fim da fila.${RESET}"
+            mpv_pid=""
+            current_song="nenhuma"
+        fi
+    fi
+}
 
 next_song() {
   if (( current_index + 1 < ${#queue[@]} )); then
@@ -115,6 +139,49 @@ prev_song() {
   else
     echo -e "${YELLOW}Início da fila.${RESET}"
   fi
+}
+
+remove_from_queue() {
+    local num_song="$1"
+    local index=$(( num_song - 1 ))
+    
+    if [[ "$num_song" =~ ^[0-9]+$ ]] && (( index >= 0 && index < ${#queue[@]} )); then
+        local removed_title="${queue_titles[$index]}"
+        
+        unset 'queue[index]'
+        unset 'queue_titles[index]'
+        
+        queue=("${queue[@]}")
+        queue_titles=("${queue_titles[@]}")
+
+        echo -e "${GREEN}Removido:${RESET} $removed_title"
+        
+        if (( index < current_index )); then
+            ((current_index--))
+        elif (( index == current_index )); then
+             # Se a música tocando for removida, pare e toque a próxima
+             stop_song 
+             next_song 
+        fi
+    else
+        err "Número inválido ou fora do limite da fila."
+    fi
+}
+
+jump_to_song() {
+    local num_song="$1"
+    local index=$(( num_song - 1 ))
+    
+    if [[ "$num_song" =~ ^[0-9]+$ ]] && (( index >= 0 && index < ${#queue[@]} )); then
+        current_index=$index
+        current_song="${queue_titles[$current_index]}"
+        echo -e "${GREEN}[▶ PULANDO PARA]${RESET} ${BOLD}$current_song${RESET}"
+        
+        # Inicia a reprodução e o novo monitor
+        play_url "${queue[$current_index]}"
+    else
+        err "Número inválido ou fora do limite da fila."
+    }
 }
 
 search_print() {
@@ -369,6 +436,20 @@ case "$query" in
     :list|:ls)
         list_queue
         ;;
+    :rm*)
+        num="${query#*:rm }"
+        if [[ -z "$num" ]]; then
+            read -p "Número da música para remover: " num
+        fi
+        remove_from_queue "$num"
+        ;;
+    :jump*)
+        num="${query#*:jump }"
+        if [[ -z "$num" ]]; then
+            read -p "Número da música para pular: " num
+        fi
+        jump_to_song "$num"
+        ;;
     :fy) fy_play ;;
     :like) fy_mode=1; fy_like ;;
     :dislike) fy_mode=1; fy_dislike ;;
@@ -411,6 +492,9 @@ case "$query" in
         echo ":next              - próxima música na fila"
         echo ":prev              - música anterior"
         echo ":list              - listar fila"
+        echo ":rm <n>            - remove música <n> da fila"
+        echo ":jump <n>          - pula para música <n> da fila"
+        echo ":setresults        - quantidade de resultados por busca"
         echo ":setresults        - quantidade de resultados por busca"
         echo ":history           - mostrar histórico"
         echo "!<n>               - tocar música do histórico"
